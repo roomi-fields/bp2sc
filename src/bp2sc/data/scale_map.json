@@ -1,0 +1,18 @@
+{
+  "tunings": {
+    "just intonation": "Tuning.just",
+    "piano": "Tuning.et12",
+    "0": "Tuning.et12",
+    "meantone_classic": "Tuning.mean4",
+    "meantone1": "Tuning.mean4",
+    "bach_temperament": "Tuning.werckmeister",
+    "pure_minor-third_meantone": "Tuning.mean5"
+  },
+  "ragas": {
+    "todi_ka_3": "Scale.todi",
+    "todi_ka_4": "Scale.todi",
+    "todi_aak_2": "Scale.todi",
+    "todi_aak_3": "Scale.todi",
+    "grama": "Scale.chromatic"
+  }
+}

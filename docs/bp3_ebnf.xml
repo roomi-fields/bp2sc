@@ -1,0 +1,553 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  BP3 Grammar — Formal EBNF Specification (W3C EBNF XML, ISO 14977)
+
+  This file defines the complete syntax of Bol Processor BP3 grammar files
+  as used by the bp2sc transpiler. Each <production> maps to one or more
+  AST node types in ast_nodes.py.
+
+  Conventions:
+    - Terminal strings are enclosed in double quotes: "ORD"
+    - Character classes use [...]: [A-Z]
+    - Repetition: expr* (0+), expr+ (1+), expr? (0 or 1)
+    - Alternation: expr | expr
+    - Grouping: ( expr )
+    - Comments: XML comments
+
+  Reference: https://bolprocessor.org/
+  ISO 14977: https://www.iso.org/standard/26153.html
+-->
+<grammar xmlns="urn:bp3:ebnf" version="1.0">
+
+  <!-- ============================================================ -->
+  <!-- TOP-LEVEL FILE STRUCTURE                                      -->
+  <!-- ============================================================ -->
+
+  <production name="bp_file">
+    <!-- A BP3 grammar file: optional headers, then one or more grammar blocks -->
+    <rule>header_line* grammar_section+</rule>
+  </production>
+
+  <production name="grammar_section">
+    <!-- A grammar section is a separator (optional), mode line, optional preamble, then rules -->
+    <rule>separator? mode_line preamble_line? rule_line+</rule>
+  </production>
+
+  <!-- ============================================================ -->
+  <!-- HEADERS                                                       -->
+  <!-- ============================================================ -->
+
+  <production name="header_line">
+    <rule>comment_line | file_ref | init_directive | blank_line</rule>
+  </production>
+
+  <production name="comment_line">
+    <!-- BP3 line comment: // followed by any text -->
+    <rule>"//" text_to_eol</rule>
+  </production>
+
+  <production name="file_ref">
+    <!-- File reference: -prefix.name -->
+    <rule>"-" file_prefix "." identifier</rule>
+  </production>
+
+  <production name="file_prefix">
+    <!-- Known file prefixes -->
+    <rule>"ho" | "se" | "al" | "cs"</rule>
+  </production>
+
+  <production name="init_directive">
+    <!-- INIT: directive with arbitrary text -->
+    <rule>"INIT:" text_to_eol</rule>
+  </production>
+
+  <!-- ============================================================ -->
+  <!-- SEPARATORS                                                    -->
+  <!-- ============================================================ -->
+
+  <production name="separator">
+    <!-- Three or more dashes on a line -->
+    <rule>"---" "-"*</rule>
+  </production>
+
+  <!-- ============================================================ -->
+  <!-- MODE LINE                                                     -->
+  <!-- ============================================================ -->
+
+  <production name="mode_line">
+    <!-- Grammar mode with optional index and label -->
+    <rule>mode_keyword ( "[" mode_index "]" )? ( "[" mode_label "]" )?</rule>
+  </production>
+
+  <production name="mode_keyword">
+    <rule>"ORD" | "RND" | "LIN" | "SUB" | "SUB1"</rule>
+  </production>
+
+  <production name="mode_index">
+    <!-- Subgrammar number -->
+    <rule>integer</rule>
+  </production>
+
+  <production name="mode_label">
+    <!-- Optional label like "Effects" -->
+    <rule>identifier</rule>
+  </production>
+
+  <!-- ============================================================ -->
+  <!-- PREAMBLE                                                      -->
+  <!-- ============================================================ -->
+
+  <production name="preamble_line">
+    <!-- One or more special functions before the first rule -->
+    <rule>special_fn+</rule>
+  </production>
+
+  <!-- ============================================================ -->
+  <!-- RULE LINE                                                     -->
+  <!-- ============================================================ -->
+
+  <production name="rule_line">
+    <!-- A complete production rule.
+         rule_prefix is optional: some files use bare rules ("B --> x a")
+         without the gram#N[M] prefix. -->
+    <rule>rule_prefix? weight? flag* lhs "--&gt;" rhs trailing_comment?</rule>
+  </production>
+
+  <production name="rule_prefix">
+    <!-- gram#N[M] prefix identifying grammar and rule numbers.
+         Case-insensitive: "gram#1[1]" and "GRAM#1[1]" are both valid. -->
+    <rule>("gram#" | "GRAM#") integer "[" integer "]"</rule>
+  </production>
+
+  <!-- ============================================================ -->
+  <!-- WEIGHT                                                        -->
+  <!-- ============================================================ -->
+
+  <production name="weight">
+    <!-- Rule weight: fixed or decremental -->
+    <rule>"&lt;" integer ( "-" integer )? "&gt;"</rule>
+  </production>
+
+  <!-- ============================================================ -->
+  <!-- FLAGS                                                         -->
+  <!-- ============================================================ -->
+
+  <production name="flag">
+    <!-- Flag expression enclosed in slashes -->
+    <rule>"/" flag_expr "/"</rule>
+  </production>
+
+  <production name="flag_expr">
+    <!-- Flag operations -->
+    <rule>flag_init | flag_arith | flag_compare | flag_condition</rule>
+  </production>
+
+  <production name="flag_init">
+    <!-- Flag initialization: /Name=Value/ -->
+    <rule>flag_name "=" flag_value</rule>
+  </production>
+
+  <production name="flag_arith">
+    <!-- Flag arithmetic: /Name+N/ or /Name-N/ -->
+    <rule>flag_name ( "+" | "-" ) integer</rule>
+  </production>
+
+  <production name="flag_compare">
+    <!-- Flag comparison: /N1 > N2/ or /N1 = N2/ or /N1 < N2/ -->
+    <rule>flag_name ( "&gt;" | "=" | "&lt;" ) flag_name</rule>
+  </production>
+
+  <production name="flag_condition">
+    <!-- Bare flag condition: /Name/ -->
+    <rule>flag_name</rule>
+  </production>
+
+  <production name="flag_name">
+    <rule>identifier</rule>
+  </production>
+
+  <production name="flag_value">
+    <rule>integer | identifier</rule>
+  </production>
+
+  <!-- ============================================================ -->
+  <!-- LHS (Left-Hand Side)                                          -->
+  <!-- ============================================================ -->
+
+  <production name="lhs">
+    <!-- One or more symbols (context-sensitive rules have multiple LHS symbols) -->
+    <rule>lhs_element+</rule>
+  </production>
+
+  <production name="lhs_element">
+    <rule>nonterminal | variable | wildcard | context_marker</rule>
+  </production>
+
+  <!-- ============================================================ -->
+  <!-- RHS (Right-Hand Side)                                         -->
+  <!-- ============================================================ -->
+
+  <production name="rhs">
+    <!-- Sequence of RHS elements -->
+    <rule>rhs_element*</rule>
+  </production>
+
+  <production name="rhs_element">
+    <rule>
+      note | rest | undetermined_rest | prolongation
+      | nonterminal | terminal | variable
+      | wildcard | polymetric | special_fn
+      | lambda | homo_apply | time_sig
+      | annotation | quoted_symbol | sound_object
+      | tie_start | tie_end | context_marker
+      | flag
+    </rule>
+  </production>
+
+  <!-- ============================================================ -->
+  <!-- NOTES                                                         -->
+  <!-- ============================================================ -->
+
+  <production name="note">
+    <rule>note_french | note_indian | note_anglo</rule>
+  </production>
+
+  <production name="note_french">
+    <!-- French solfege: do4, re5, sib4, fa#3 -->
+    <rule>note_name_fr accidental? digit</rule>
+  </production>
+
+  <production name="note_name_fr">
+    <rule>"do" | "re" | "mi" | "fa" | "sol" | "la" | "si"</rule>
+  </production>
+
+  <production name="note_indian">
+    <!-- Indian sargam: sa6, re6, ga6, pa7, dha6, ni5 -->
+    <rule>note_name_indian digit</rule>
+  </production>
+
+  <production name="note_name_indian">
+    <rule>"sa" | "re" | "ga" | "ma" | "pa" | "dha" | "ni"</rule>
+  </production>
+
+  <production name="note_anglo">
+    <!-- Anglo/English: C4, F#3, Bb5 -->
+    <rule>note_name_anglo accidental? digit</rule>
+  </production>
+
+  <production name="note_name_anglo">
+    <rule>[A-G]</rule>
+  </production>
+
+  <production name="accidental">
+    <rule>"#" | "b"</rule>
+  </production>
+
+  <!-- ============================================================ -->
+  <!-- RESTS AND PROLONGATIONS                                       -->
+  <!-- ============================================================ -->
+
+  <production name="rest">
+    <!-- Determined rest/silence: a single dash not part of another token -->
+    <rule>"-"</rule>
+  </production>
+
+  <production name="undetermined_rest">
+    <!-- Undetermined/continued rest: _rest keyword or standalone _ -->
+    <rule>"_rest" | "_"</rule>
+  </production>
+
+  <production name="prolongation">
+    <!-- Prolongation of previous sound: underscore _ -->
+    <!-- Note: _ is ambiguous between undetermined rest and prolongation;
+         context determines which. In BP3, _ after a note = prolongation. -->
+    <rule>"_"</rule>
+  </production>
+
+  <production name="undetermined_continuation">
+    <!-- Ellipsis indicating undetermined continuation -->
+    <rule>"..."</rule>
+  </production>
+
+  <!-- ============================================================ -->
+  <!-- SYMBOLS                                                       -->
+  <!-- ============================================================ -->
+
+  <production name="nonterminal">
+    <!-- Uppercase-starting identifier: S, Tihai, P4, A8, B"8, C'8 -->
+    <rule>[A-Z] [A-Za-z0-9_'"]*</rule>
+  </production>
+
+  <production name="terminal">
+    <!-- Lowercase identifier that is a sound-object defined in the alphabet -->
+    <!-- Examples: ek, do, tin, char, panch, che, sat, at -->
+    <rule>[a-z] [a-z0-9_'"]*</rule>
+  </production>
+
+  <production name="variable">
+    <!-- Variable delimited by pipes: |varName| -->
+    <rule>"|" identifier "|"</rule>
+  </production>
+
+  <production name="quoted_symbol">
+    <!-- Single-quoted symbol: '1', '2' -->
+    <rule>"'" [^']+ "'"</rule>
+  </production>
+
+  <production name="sound_object">
+    <!-- Out-of-time sound object: <<name>> -->
+    <rule>"&lt;&lt;" identifier "&gt;&gt;"</rule>
+  </production>
+
+  <!-- ============================================================ -->
+  <!-- WILDCARDS                                                     -->
+  <!-- ============================================================ -->
+
+  <production name="wildcard">
+    <!-- Wildcard: ?N (numbered) or ? (anonymous) -->
+    <rule>"?" integer?</rule>
+  </production>
+
+  <!-- ============================================================ -->
+  <!-- POLYMETRIC EXPRESSIONS                                        -->
+  <!-- ============================================================ -->
+
+  <production name="polymetric">
+    <!-- Polymetric expression enclosed in braces -->
+    <rule>"{" polymetric_body "}"</rule>
+  </production>
+
+  <production name="polymetric_body">
+    <rule>poly_ratio | poly_parallel | poly_fractional</rule>
+  </production>
+
+  <production name="poly_ratio">
+    <!-- Tempo ratio followed by comma then elements: {2, A B C} -->
+    <rule>integer "," rhs_element+</rule>
+  </production>
+
+  <production name="poly_parallel">
+    <!-- Parallel voices: {v1 v2, v3 v4} -->
+    <rule>rhs_element+ ( "," rhs_element+ )+</rule>
+  </production>
+
+  <production name="poly_fractional">
+    <!-- Fractional ratio: {1/2, A B} -->
+    <rule>integer "/" integer "," rhs_element+</rule>
+  </production>
+
+  <!-- ============================================================ -->
+  <!-- SPECIAL FUNCTIONS                                             -->
+  <!-- ============================================================ -->
+
+  <production name="special_fn">
+    <!-- Special function with or without arguments -->
+    <rule>special_fn_with_args | special_fn_bare</rule>
+  </production>
+
+  <production name="special_fn_with_args">
+    <!-- _name(arg1, arg2, ...) -->
+    <rule>"_" fn_name "(" fn_args? ")"</rule>
+  </production>
+
+  <production name="special_fn_bare">
+    <!-- _name (no parentheses) -->
+    <rule>"_" fn_name</rule>
+  </production>
+
+  <production name="fn_name">
+    <!-- Known function names.
+         Grouped by category:
+           - Modifiers: affect subsequent events (stateful)
+           - Structural: affect pattern structure
+           - Articulation: performance control
+           - Control flow: derivation engine commands
+           - Informational: annotative, no direct SC output
+    -->
+    <rule>
+      <!-- Modifiers (stateful key-value pairs) -->
+        "transpose" | "vel" | "mm" | "ins" | "chan"
+      | "volume" | "mod" | "tempo" | "value"
+      | "pitchbend" | "pitchrange"
+      <!-- Structural -->
+      | "repeat" | "rest" | "retro" | "rotate"
+      <!-- Articulation / performance -->
+      | "staccato" | "legato" | "smooth" | "striated"
+      <!-- Continuous controllers -->
+      | "velcont" | "pitchcont" | "modcont" | "presscont"
+      | "volumecont" | "cont"
+      <!-- Keyboard / channel -->
+      | "press" | "step" | "keyxpand" | "pitchstep"
+      | "part" | "fixed" | "pitchfixed" | "rndvel"
+      <!-- Switch -->
+      | "switchon" | "switchoff"
+      <!-- Scale / tuning -->
+      | "scale"
+      <!-- Control flow (require derivation engine) -->
+      | "goto" | "failed" | "destru" | "script"
+    </rule>
+  </production>
+
+  <production name="fn_args">
+    <!-- Comma-separated arguments -->
+    <rule>fn_arg ( "," fn_arg )*</rule>
+  </production>
+
+  <production name="fn_arg">
+    <!-- An argument: number, identifier, or expression -->
+    <rule>number | identifier</rule>
+  </production>
+
+  <!-- ============================================================ -->
+  <!-- LAMBDA                                                        -->
+  <!-- ============================================================ -->
+
+  <production name="lambda">
+    <!-- Empty production -->
+    <rule>"lambda"</rule>
+  </production>
+
+  <!-- ============================================================ -->
+  <!-- HOMOMORPHISMS                                                 -->
+  <!-- ============================================================ -->
+
+  <production name="homo_apply">
+    <!-- Homomorphism application -->
+    <rule>homo_master | homo_slave</rule>
+  </production>
+
+  <production name="homo_master">
+    <!-- Master homomorphism: (= expr) -->
+    <rule>"(=" rhs_element+ ")"</rule>
+  </production>
+
+  <production name="homo_slave">
+    <!-- Slave homomorphism: (: expr) -->
+    <rule>"(:" rhs_element+ ")"</rule>
+  </production>
+
+  <!-- ============================================================ -->
+  <!-- TIES                                                          -->
+  <!-- ============================================================ -->
+
+  <production name="tie_start">
+    <!-- Start of a tie: note followed by & -->
+    <rule>note "&amp;"</rule>
+  </production>
+
+  <production name="tie_end">
+    <!-- End of a tie: & followed by note -->
+    <rule>"&amp;" note</rule>
+  </production>
+
+  <!-- ============================================================ -->
+  <!-- TIME SIGNATURES                                               -->
+  <!-- ============================================================ -->
+
+  <production name="time_sig">
+    <!-- Time signature: N+N+N/D -->
+    <rule>integer ( "+" integer )+ "/" integer</rule>
+  </production>
+
+  <!-- ============================================================ -->
+  <!-- TIME PATTERNS                                                 -->
+  <!-- ============================================================ -->
+
+  <production name="time_patterns">
+    <!-- TIMEPATTERNS: t1=1/1 t2=3/2 ... -->
+    <rule>"TIMEPATTERNS:" time_pattern_def+</rule>
+  </production>
+
+  <production name="time_pattern_def">
+    <rule>identifier "=" integer "/" integer</rule>
+  </production>
+
+  <!-- ============================================================ -->
+  <!-- ANNOTATIONS                                                   -->
+  <!-- ============================================================ -->
+
+  <production name="annotation">
+    <!-- Bracket annotation: [Variant], [?], [text] -->
+    <rule>"[" annotation_text "]"</rule>
+  </production>
+
+  <production name="annotation_text">
+    <rule>[^\]]*</rule>
+  </production>
+
+  <!-- ============================================================ -->
+  <!-- CONTEXT MARKERS                                               -->
+  <!-- ============================================================ -->
+
+  <production name="context_marker">
+    <!-- Context-sensitive markers -->
+    <rule>context_distant | context_open | context_close | context_wild | context_left</rule>
+  </production>
+
+  <production name="context_distant">
+    <!-- Distant context: (symbol) -->
+    <rule>"(" rhs_element ")"</rule>
+  </production>
+
+  <production name="context_open">
+    <!-- Context open brace: #({) -->
+    <rule>"#({)"</rule>
+  </production>
+
+  <production name="context_close">
+    <!-- Context close brace: #(}) -->
+    <rule>"#(})"</rule>
+  </production>
+
+  <production name="context_wild">
+    <!-- Context wildcard: #? -->
+    <rule>"#?"</rule>
+  </production>
+
+  <production name="context_left">
+    <!-- Left context: LEFT keyword -->
+    <rule>"LEFT"</rule>
+  </production>
+
+  <!-- ============================================================ -->
+  <!-- TRAILING COMMENTS                                             -->
+  <!-- ============================================================ -->
+
+  <production name="trailing_comment">
+    <!-- Inline comment at end of a rule line -->
+    <rule>"//" text_to_eol</rule>
+  </production>
+
+  <!-- ============================================================ -->
+  <!-- LEXICAL PRIMITIVES                                            -->
+  <!-- ============================================================ -->
+
+  <production name="integer">
+    <rule>[0-9]+</rule>
+  </production>
+
+  <production name="number">
+    <!-- Integer or float, optionally signed -->
+    <rule>( "+" | "-" )? [0-9]+ ( "." [0-9]+ )?</rule>
+  </production>
+
+  <production name="identifier">
+    <!-- General identifier -->
+    <rule>[A-Za-z] [A-Za-z0-9_'"]*</rule>
+  </production>
+
+  <production name="digit">
+    <rule>[0-9]</rule>
+  </production>
+
+  <production name="text_to_eol">
+    <!-- Any text to end of line -->
+    <rule>[^\n]*</rule>
+  </production>
+
+  <production name="blank_line">
+    <!-- Empty or whitespace-only line -->
+    <rule>[ \t]*</rule>
+  </production>
+
+</grammar>

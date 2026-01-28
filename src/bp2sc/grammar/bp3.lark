@@ -1,0 +1,149 @@
+// BP3 Grammar for Lark (Earley parser)
+// Supports the MVP subset: -gr.12345678, -gr.Ruwet, -gr.trial.mohanam
+
+start: (_header_line | _blank_line)* grammar_block+
+
+// --- Headers ---
+_header_line: comment_line | file_ref | init_directive
+
+comment_line: COMMENT_LINE
+file_ref: FILE_REF
+init_directive: "INIT:" REST_OF_LINE
+
+// --- Grammar blocks ---
+grammar_block: subgrammar_header preamble_line? rule+ _separator?
+
+subgrammar_header: MODE _subgram_index? _subgram_label? _NEWLINE
+_subgram_index: "[" /[^\]]+/ "]"
+_subgram_label: "[" /[^\]]+/ "]"
+
+MODE: "ORD" | "RND" | "LIN" | "SUB1" | "SUB"
+
+preamble_line: preamble_item+ _NEWLINE
+preamble_item: special_fn | "_striated"i
+
+// --- Rules ---
+rule: _rule_prefix weight? flag_cond* lhs ARROW rhs inline_comment? _NEWLINE
+
+_rule_prefix: "gram#" INT "[" INT "]"
+ARROW: "-->"
+
+// --- Weight ---
+weight: "<" weight_expr ">"
+weight_expr: INT "-" INT -> weight_decrement
+           | INT          -> weight_fixed
+           | "0"          -> weight_zero
+
+// --- Flags ---
+flag_cond: "/" flag_expr "/"
+flag_expr: FLAGNAME "=" FLAGVAL   -> flag_assign
+         | FLAGNAME "+" FLAGVAL   -> flag_inc
+         | FLAGNAME "-" FLAGVAL   -> flag_dec
+         | FLAGNAME ">" FLAGNAME  -> flag_gt
+         | FLAGNAME "<" FLAGNAME  -> flag_lt
+         | FLAGNAME "=" FLAGNAME  -> flag_eq
+         | FLAGNAME               -> flag_bare
+
+FLAGNAME: /[A-Za-z_][A-Za-z_0-9]*/
+FLAGVAL: /[0-9]+/
+
+// --- LHS ---
+lhs: lhs_elem+
+lhs_elem: nonterminal
+        | variable
+        | wildcard
+        | rest_symbol
+        | note
+
+// --- RHS ---
+rhs: rhs_elem+
+rhs_elem: note
+        | rest_symbol
+        | nonterminal
+        | variable
+        | wildcard
+        | polymetric
+        | special_fn
+        | lambda_
+        | homo_apply
+        | time_sig
+        | bracket_comment
+
+// --- Symbols ---
+note: NOTE_SOLFEGE_FR | NOTE_SOLFEGE_INDIAN | NOTE_ANGLO
+
+// French solfege: do4, re5, fab3, sol4, la4, sib4, mi4
+NOTE_SOLFEGE_FR: /(?:do|re|mi|fa|sol|la|si)(?:b|#)?[0-9]/
+
+// Indian sargam: sa6, re6, ga6, ma6, pa6, dha6, ni6
+NOTE_SOLFEGE_INDIAN: /(?:sa|re|ga|ma|pa|dha|ni)[0-9]/
+
+// Anglo: C4, D#3, Bb5, F3
+NOTE_ANGLO: /[A-G](?:#|b)?[0-9]/
+
+nonterminal: NONTERMINAL
+// Nonterminal: starts with uppercase, can contain letters, digits, ', "
+// Must not match NOTE_ANGLO, mode keywords, or "lambda"
+NONTERMINAL: /(?!lambda\b)[A-Z][A-Za-z0-9_'"]*/ | /[A-Z][A-Za-z0-9_'"]+/
+
+variable: "|" VAR_NAME "|"
+VAR_NAME: /[A-Za-z_][A-Za-z_0-9"]*/
+
+wildcard: "?" INT
+
+rest_symbol: REST_DASH | REST_UNDER
+REST_DASH: /(?<![\w.#])-(?![\w.>-])/
+REST_UNDER: "_" /(?![a-zA-Z])/
+
+lambda_: "lambda"
+
+// --- Polymetric expressions ---
+polymetric: "{" poly_content "}"
+poly_content: INT "," poly_voices  -> poly_with_ratio
+            | poly_voices          -> poly_bare
+
+poly_voices: poly_voice ("," poly_voice)*
+poly_voice: rhs_elem+
+
+// --- Special functions ---
+special_fn: "_" FUNC_NAME "(" func_args ")"
+FUNC_NAME: /[a-zA-Z][a-zA-Z0-9]*/
+func_args: FUNC_ARG ("," FUNC_ARG)*
+         |
+FUNC_ARG: /[^,)]+/
+
+// --- Homomorphism application ---
+homo_apply: "(=" rhs_elem+ ")" -> homo_master
+          | "(:" rhs_elem+ ")" -> homo_slave
+          | HOMO_NAME          -> homo_ref
+
+HOMO_NAME: /mineur|majeur|m[0-9]+|trn/
+
+// --- Time signature (in RHS, e.g. 4+4+4+4+4+4/4) ---
+time_sig: TIME_SIG_EXPR
+TIME_SIG_EXPR: /[0-9]+(?:\+[0-9]+)*\/[0-9]+/
+
+// --- Inline comments ---
+inline_comment: BRACKET_COMMENT+
+BRACKET_COMMENT: /\[[^\]]*\]/
+
+bracket_comment: BRACKET_COMMENT
+
+// --- Separators ---
+_separator: /---[-]*/ _NEWLINE
+
+// --- Blanks ---
+_blank_line: _NEWLINE
+
+// --- Terminals ---
+COMMENT_LINE: /\/\/.*/
+FILE_REF: /^-(?:se|al|ho|cs|da|so)\.[A-Za-z0-9_.]+/m
+REST_OF_LINE: /[^\n]+/
+
+INT: /[0-9]+/
+
+_NEWLINE: /\s*\n\s*/
+
+// Whitespace between tokens (NOT newlines)
+%ignore /[ \t]+/
+%ignore COMMENT_LINE
