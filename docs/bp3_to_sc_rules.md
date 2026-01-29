@@ -131,12 +131,13 @@ NOTES:  Consecutive MIDI notes are grouped into a single Pbind.
         Satisfies INV-2.
 
         Octave conventions (matching BP3 Inits.c SetNoteNames):
-        - French:  MIDI = (octave + 2) * 12 + semitone → do4 = 72
+        - French:  MIDI = (octave + 1) * 12 + semitone → do4 = 60
         - English: MIDI = (octave + 1) * 12 + semitone → C4 = 60
         - Indian:  MIDI = (octave + 1) * 12 + semitone → sa4 = 60
 
-        BP3 uses octave = j/12, then subtracts 2 for French display
-        and 1 for English/Indian. The inverse gives the formulas above.
+        BP3 uses the same internal formula for all conventions.
+        The naming difference (French do3 = English C4) is a display
+        convention, not a different MIDI mapping (per Bernard Bel).
 ```
 
 ### RULE note_single

@@ -52,8 +52,14 @@
   </production>
 
   <production name="file_prefix">
-    <!-- Known file prefixes -->
-    <rule>"ho" | "se" | "al" | "cs"</rule>
+    <!-- Known file prefixes.
+         Note (per Bernard Bel): BP3 renames files on first read:
+         - "-ho." (homomorphisms) → "-al." (alphabet)
+         - "-mi." (MIDI objects) → "-so." (sound objects)
+         - "-cs." files are moved to a Csound folder
+         The "-al." files therefore contain BOTH terminal lists AND homomorphism mappings.
+    -->
+    <rule>"se" | "al" | "so" | "cs"</rule>
   </production>
 
   <production name="init_directive">

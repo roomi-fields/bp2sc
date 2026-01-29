@@ -57,13 +57,21 @@ RHSElement = (
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `prefix` | `str` | File type: `"se"`, `"al"`, `"ho"`, `"cs"` |
+| `prefix` | `str` | File type: `"se"`, `"al"`, `"so"`, `"cs"` |
 | `name` | `str` | Project name |
 
-**Invariant:** `prefix in {"se", "al", "ho", "cs"}`
+**Invariant:** `prefix in {"se", "al", "so", "cs"}`
 
 **BP3:** `-se.EkDoTin`
 **AST:** `FileRef(prefix="se", name="EkDoTin")`
+
+**Note on file types** (per Bernard Bel):
+- `-se.*`: Settings files (positional parameters, tempo, MIDI config)
+- `-al.*`: Alphabet files — contain **both** terminal lists AND homomorphism
+  mappings (BP3 renames `-ho.*` to `-al.*` on first read)
+- `-so.*`: Sound-object definitions (BP3 renames `-mi.*` to `-so.*` as they
+  handle more than just MIDI)
+- `-cs.*`: Csound files (BP3 moves these to a Csound folder)
 
 ### InitDirective
 
@@ -117,13 +125,17 @@ RHSElement = (
 
 **Invariant:** `name` matches one of: French solfege (`do`, `re`, `mi`, `fa`, `sol`, `la`, `si` + optional accidental), Indian sargam (`sa`, `re`, `ga`, `ma`, `pa`, `dha`, `ni`), or Anglo (`A`-`G` + optional accidental).
 
-**BP3:** `sib4` -> `Note(name="sib", octave=4)` → MIDI 82 (French: `(4+2)*12+10`)
+**BP3:** `sib4` -> `Note(name="sib", octave=4)` → MIDI 70 (French: `(4+1)*12+10`)
 **BP3:** `F#3` -> `Note(name="F#", octave=3)` → MIDI 54 (Anglo: `(3+1)*12+6`)
 
 **Octave conventions** (matching BP3 `Inits.c SetNoteNames`):
-- French:  `MIDI = (octave + 2) * 12 + semitone` → `do4` = 72
+- French:  `MIDI = (octave + 1) * 12 + semitone` → `do4` = 60
 - English: `MIDI = (octave + 1) * 12 + semitone` → `C4` = 60
 - Indian:  `MIDI = (octave + 1) * 12 + semitone` → `sa4` = 60
+
+**Note:** BP3 uses the same internal formula for all conventions. The naming
+difference (French `do3` = English `C4`) is a display convention, not a
+different MIDI mapping. See Bernard Bel's clarification.
 
 **Parser note:** Anglo notes without accidentals (`C4`, `D4`) are parsed
 as `NonTerminal` (not `Note`) because uppercase identifiers like `A8`, `B8`

@@ -153,9 +153,13 @@ semitones. This is not yet handled by the transpiler.
 
 Homomorphism identifiers (e.g., `mineur` in `|miny| --> mineur (= |y|)`)
 are parsed as `HomoApply(kind=REF)` nodes. These are **not** playable
-sounds — they select which mapping from the `-ho.` file to apply. The
+sounds — they select which mapping from the `-al.` file to apply. The
 emitter skips REF nodes entirely and excludes them from terminal
 auto-mapping.
+
+**Note:** BP3 renames `-ho.*` (homomorphism) files to `-al.*` (alphabet)
+on first read. The `-al.*` files therefore contain both terminal lists
+AND homomorphism mappings (per Bernard Bel).
 
 ### Multi-Symbol LHS (Context-Sensitive Rules)
 
@@ -292,6 +296,23 @@ transpiler uses a data-driven approach via `src/bp2sc/scale_map.py`:
 **Configuration:**
 The mapping data lives in `src/bp2sc/data/scale_map.json`, allowing users to
 add custom tunings/ragas without modifying Python code.
+
+### Resource File Types
+
+BP3 uses several resource file types, referenced via `-prefix.Name` syntax.
+**Important:** BP3 renames files on first read (per Bernard Bel):
+
+| Original | Renamed | Contents |
+|----------|---------|----------|
+| `-ho.*` | `-al.*` | Homomorphism mappings (now merged into alphabet) |
+| `-mi.*` | `-so.*` | Sound-object definitions (not just MIDI) |
+| `-cs.*` | (moved to Csound folder) | Csound instrument definitions |
+
+Current file prefixes after BP3 normalization:
+- `-se.*`: Settings (positional parameters, tempo, MIDI config, note convention)
+- `-al.*`: Alphabet — contains **both** terminal lists AND homomorphism definitions
+- `-so.*`: Sound-object files (renamed from `-mi.*`)
+- `-cs.*`: Csound files (moved to dedicated folder)
 
 ### Resource File Parsers
 
