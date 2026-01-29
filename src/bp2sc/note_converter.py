@@ -6,12 +6,12 @@ Supports three naming conventions:
 - Anglo/English: C, D, E, F, G, A, B (+ optional accidental + octave)
 
 Octave conventions (verified against BP3 MIDI output):
-- French: MIDI = (octave + 1) * 12 + semitone  → do4 = 60, fa4 = 65
+- French: MIDI = (octave + 1) * 12 + semitone  → do4 = 60
 - English: MIDI = (octave + 1) * 12 + semitone → C4 = 60
 - Indian:  MIDI = (octave + 1) * 12 + semitone → sa4 = 60
 
-All three conventions use the same formula: (octave + 1) * 12 + semitone.
-This means do4 = C4 = sa4 = MIDI 60.
+All conventions use the same formula in BP3: (octave + 1) * 12 + semitone.
+Note: In music theory, French do3 = English C4, but BP3 uses unified numbering.
 
 Note: BP3's C4key setting (default 60) can shift all mappings by
 (C4key - 60) semitones. This is not handled here; callers should
@@ -69,7 +69,7 @@ def note_to_midi(name: str, octave: int, base_octave: int = 4) -> int:
         MIDI note number (0-127)
     """
     # Try French solfege first
-    # All conventions use (octave + 1) * 12: do4 = fa4 = C4 = MIDI 60 range
+    # All conventions use (octave + 1) * 12 in BP3: do4 = C4 = 60
     if name.lower() in _FR_BASE:
         semitone = _FR_BASE[name.lower()]
         return (octave + 1) * 12 + semitone

@@ -44,6 +44,8 @@ htmlcov/
 output*.scd
 comparison_output/
 *.mid
+# Exception: reference MIDI files for testing
+!tests/reference/*.mid
 
 # Temporary files
 *.tmp

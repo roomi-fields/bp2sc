@@ -6,7 +6,7 @@ from bp2sc.note_converter import note_to_midi, detect_convention
 
 class TestFrenchSolfege:
     # BP3 French convention: MIDI = (octave + 1) * 12 + semitone
-    # Same as English: do4 = C4 = 60
+    # Same as English in BP3: do4 = C4 = 60
     def test_do4_is_60(self):
         assert note_to_midi("do", 4) == 60
 

@@ -142,7 +142,7 @@ conventions as defined in `Inits.c SetNoteNames()`:
 
 | Convention | Formula | Example | Source |
 |-----------|---------|---------|--------|
-| French    | `(octave + 1) * 12 + semitone` | `do4` = 60 | BP3 standard (same as English) |
+| French    | `(octave + 1) * 12 + semitone` | `do4` = 60 | Same as English in BP3 |
 | English   | `(octave + 1) * 12 + semitone` | `C4` = 60 | `Inits.c:459 octave--` |
 | Indian    | `(octave + 1) * 12 + semitone` | `sa4` = 60 | `Inits.c:468 octave--` |
 

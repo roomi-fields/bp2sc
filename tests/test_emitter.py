@@ -11,7 +11,7 @@ class TestEmitBasic:
         scd = emit_scd(ast, "test")
         assert "Pdef(\\S" in scd
         assert "Pseq" in scd
-        # BP3 French: fa4 = MIDI 65, sol4 = 67, la4 = 69
+        # BP3 French: do4=C4=60, so fa4 = 65, sol4 = 67, la4 = 69
         assert "65" in scd
         assert "67" in scd
         assert "69" in scd
