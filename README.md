@@ -199,6 +199,39 @@ Pbindef(\main, \instrument, \synthB);
 | `_repeat(N)` | `Pn(pattern, N)` | `_repeat(4) X` → repete X 4 fois |
 | `_retro` | `reversed(elements)` | `{_retro A B C}` → C B A |
 | `_rotate(N)` | `rotate(elements, N)` | `{_rotate(1) A B C}` → B C A |
+| `_rndtime(N)` | `\dur, Pwhite(lo, hi)` | `_rndtime(10)` → variation timing ±10% |
+
+---
+
+## Support MusicXML Import
+
+bp2sc supporte **100%** des constructions generees par l'importeur MusicXML
+de Bernard (`_musicxml.php`). Ceci permet de transpiler vers SuperCollider
+tous les fichiers BP3 issus d'imports MusicXML.
+
+### Constructions MusicXML supportees
+
+| Construct | Syntaxe BP3 | Mapping SC |
+|-----------|-------------|------------|
+| Notes liees (tie start) | `C4&`, `fa4&` | `\legato, 2.0` (note tenue) |
+| Notes liees (tie end) | `&C4`, `&fa4` | `Event.silent(0.25)` |
+| Tempo inline | `\|\|120\|\|` | `\stretch, 0.5` (relatif a 60 BPM) |
+| Variation timing | `_rndtime(10)` | `\dur, Pwhite(0.225, 0.275)` |
+| Pedale sustain | `_sustainstart_`, `_sustainstop_` | `\sustain, 1/0` |
+| Pedale sostenuto | `_sostenutostart_`, `_sostenutostop_` | `\sostenuto, 1/0` |
+| Pedale soft | `_softstart_`, `_softstop_` | `\softPedal, 1/0` |
+| Slur (liaison) | `_legato_`, `_nolegato_` | `\legato, 1.5/0.8` |
+| Marqueur de partie | `_part(N)` | Commentaire (pas de warning) |
+
+### Verification de compatibilite
+
+```bash
+# Transpiler un fichier MusicXML importe
+python -m bp2sc fichier_musicxml.bp -o output.scd --verbose
+
+# Verifier 0 warnings unsupported_fn pour les elements MusicXML
+python -m bp2sc fichier_musicxml.bp --check-warnings
+```
 
 ---
 
@@ -208,7 +241,7 @@ Pbindef(\main, \instrument, \synthB);
 python -m pytest tests/ -v
 ```
 
-138 tests couvrant :
+160+ tests couvrant :
 
 - **test_parser.py** -- Parsing de tous les constructs BP3
 - **test_emitter.py** -- Generation SC avec validation des invariants

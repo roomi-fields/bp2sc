@@ -241,11 +241,15 @@ class TestEmitPhase1SpecialFn:
         assert len(unsup) == 0
 
     def test_emit_part(self):
+        """_part should NOT produce any warnings (informational marker)."""
         from bp2sc.sc_emitter import emit_scd_with_warnings
         ast = parse_text("ORD\ngram#1[1] S --> _part(2) A\n")
         scd, warnings = emit_scd_with_warnings(ast, "test")
         unsup = [w for w in warnings if w.category == "unsupported_fn"]
         assert len(unsup) == 0
+        # Also no approximation warning
+        approx = [w for w in warnings if w.category == "approximation" and "part" in w.message.lower()]
+        assert len(approx) == 0, f"Unexpected approximation warnings: {approx}"
 
 
 class TestEmitPhase2SpecialFn:
@@ -655,3 +659,169 @@ class TestEmitWeightDecrement:
         scd = emit_scd(ast, "test")
         assert "Pwrand" in scd
         assert "Prout" not in scd
+
+
+class TestEmitRndtime:
+    """MusicXML Import: _rndtime(N) -> Pwhite random timing."""
+
+    def test_rndtime_pwhite(self):
+        """_rndtime(10) -> dur contains Pwhite with ±10% variation."""
+        ast = parse_text("ORD\ngram#1[1] S --> _rndtime(10) fa4 sol4\n")
+        scd = emit_scd(ast, "test")
+        assert "Pwhite" in scd
+        assert "dur" in scd
+        # ±10% of 0.25 = 0.225 to 0.275
+        assert "0.225" in scd
+        assert "0.275" in scd
+
+    def test_rndtime_zero(self):
+        """_rndtime(0) -> dur remains fixed 0.25."""
+        ast = parse_text("ORD\ngram#1[1] S --> _rndtime(0) fa4\n")
+        scd = emit_scd(ast, "test")
+        assert "dur" in scd
+        assert "0.25" in scd
+        # Pwhite should NOT appear for zero variation
+        assert "Pwhite(0.25" not in scd
+
+    def test_rndtime_reset(self):
+        """_rndtime(20) then _rndtime(0) resets to fixed duration."""
+        ast = parse_text("ORD\ngram#1[1] S --> _rndtime(20) fa4 _rndtime(0) sol4\n")
+        scd = emit_scd(ast, "test")
+        # Should have both Pwhite (for first note) and fixed dur (after reset)
+        assert "Pwhite" in scd
+        assert "0.25" in scd
+
+    def test_rndtime_no_warning(self):
+        """_rndtime should NOT produce unsupported_fn warning."""
+        from bp2sc.sc_emitter import emit_scd_with_warnings
+        ast = parse_text("ORD\ngram#1[1] S --> _rndtime(10) fa4\n")
+        scd, warnings = emit_scd_with_warnings(ast, "test")
+        unsup = [w for w in warnings if w.category == "unsupported_fn"]
+        assert len(unsup) == 0, f"Unexpected unsupported_fn warnings: {unsup}"
+
+
+class TestEmitTiedNotes:
+    """MusicXML Import: Tied notes C4& and &C4."""
+
+    def test_tie_start_legato(self):
+        """Tie start (C4&) should emit with extended legato."""
+        ast = parse_text("ORD\ngram#1[1] S --> C4& D4\n")
+        scd = emit_scd(ast, "test")
+        assert "legato" in scd
+        assert "2.0" in scd  # Extended legato value
+
+    def test_tie_end_silent(self):
+        """Tie end (&C4) matching a start should emit Event.silent."""
+        ast = parse_text("ORD\ngram#1[1] S --> C4& &C4\n")
+        scd = emit_scd(ast, "test")
+        assert "Event.silent" in scd
+
+    def test_tie_no_warning(self):
+        """Tied notes should NOT produce unsupported_node warning."""
+        from bp2sc.sc_emitter import emit_scd_with_warnings
+        ast = parse_text("ORD\ngram#1[1] S --> C4& D4 &C4\n")
+        scd, warnings = emit_scd_with_warnings(ast, "test")
+        unsup = [w for w in warnings if w.category == "unsupported_node" and "Tie" in w.message]
+        assert len(unsup) == 0, f"Unexpected Tie warnings: {unsup}"
+
+    def test_tie_french_notes(self):
+        """French solfege tied notes should work."""
+        ast = parse_text("ORD\ngram#1[1] S --> fa4& sol4 &fa4\n")
+        scd = emit_scd(ast, "test")
+        assert "legato" in scd
+        assert "Event.silent" in scd
+
+
+class TestEmitPedalMarkers:
+    """MusicXML Import: Pedal markers _sustainstart_, _sustainstop_, etc."""
+
+    def test_sustain_start(self):
+        """_sustainstart_ should emit sustain 1."""
+        ast = parse_text("ORD\ngram#1[1] S --> _sustainstart_ fa4 sol4\n")
+        scd = emit_scd(ast, "test")
+        assert "sustain" in scd
+        assert "1" in scd
+
+    def test_sustain_stop(self):
+        """_sustainstop_ should emit sustain 0."""
+        ast = parse_text("ORD\ngram#1[1] S --> _sustainstop_ fa4\n")
+        scd = emit_scd(ast, "test")
+        assert "sustain" in scd
+        assert "0" in scd
+
+    def test_sustain_stopstart(self):
+        """_sustainstopstart_ should emit sustain 1 (stop then start)."""
+        ast = parse_text("ORD\ngram#1[1] S --> _sustainstopstart_ fa4\n")
+        scd = emit_scd(ast, "test")
+        assert "sustain" in scd
+        assert "1" in scd
+
+    def test_sustain_no_warning(self):
+        """Sustain markers should NOT produce unsupported_fn warning."""
+        from bp2sc.sc_emitter import emit_scd_with_warnings
+        ast = parse_text("ORD\ngram#1[1] S --> _sustainstart_ fa4 _sustainstop_ sol4\n")
+        scd, warnings = emit_scd_with_warnings(ast, "test")
+        unsup = [w for w in warnings if w.category == "unsupported_fn"]
+        assert len(unsup) == 0, f"Unexpected unsupported_fn warnings: {unsup}"
+
+
+class TestEmitSlurMarkers:
+    """MusicXML Import: Slur markers _legato_, _nolegato_."""
+
+    def test_legato_marker(self):
+        """_legato_ should emit legato 1.5."""
+        ast = parse_text("ORD\ngram#1[1] S --> _legato_ fa4 sol4\n")
+        scd = emit_scd(ast, "test")
+        assert "legato" in scd
+        assert "1.5" in scd
+
+    def test_nolegato_marker(self):
+        """_nolegato_ should emit legato 0.8."""
+        ast = parse_text("ORD\ngram#1[1] S --> _nolegato_ fa4\n")
+        scd = emit_scd(ast, "test")
+        assert "legato" in scd
+        assert "0.8" in scd
+
+    def test_slur_no_warning(self):
+        """Slur markers should NOT produce unsupported_fn warning."""
+        from bp2sc.sc_emitter import emit_scd_with_warnings
+        ast = parse_text("ORD\ngram#1[1] S --> _legato_ fa4 _nolegato_ sol4\n")
+        scd, warnings = emit_scd_with_warnings(ast, "test")
+        unsup = [w for w in warnings if w.category == "unsupported_fn"]
+        assert len(unsup) == 0, f"Unexpected unsupported_fn warnings: {unsup}"
+
+
+class TestEmitTempoInline:
+    """MusicXML Import: Tempo inline ||N||."""
+
+    def test_tempo_inline_parsed(self):
+        """||88|| should parse as SpecialFn('mm_inline', ['88'])."""
+        ast = parse_text("ORD\ngram#1[1] S --> ||88|| fa4 sol4\n")
+        rhs = ast.grammars[0].rules[0].rhs
+        from bp2sc.ast_nodes import SpecialFn
+        tempo_fn = rhs[0]
+        assert isinstance(tempo_fn, SpecialFn)
+        assert tempo_fn.name == "mm_inline"
+        assert tempo_fn.args == ["88"]
+
+    def test_tempo_inline_stretch(self):
+        """||120|| should emit stretch 0.5 (60/120)."""
+        ast = parse_text("ORD\ngram#1[1] S --> ||120|| fa4\n")
+        scd = emit_scd(ast, "test")
+        assert "stretch" in scd
+        assert "0.5" in scd
+
+    def test_tempo_inline_slow(self):
+        """||30|| should emit stretch 2.0 (60/30)."""
+        ast = parse_text("ORD\ngram#1[1] S --> ||30|| fa4\n")
+        scd = emit_scd(ast, "test")
+        assert "stretch" in scd
+        assert "2.0" in scd
+
+    def test_tempo_inline_no_warning(self):
+        """Tempo inline should NOT produce unsupported_fn warning."""
+        from bp2sc.sc_emitter import emit_scd_with_warnings
+        ast = parse_text("ORD\ngram#1[1] S --> ||88|| fa4\n")
+        scd, warnings = emit_scd_with_warnings(ast, "test")
+        unsup = [w for w in warnings if w.category == "unsupported_fn"]
+        assert len(unsup) == 0, f"Unexpected unsupported_fn warnings: {unsup}"

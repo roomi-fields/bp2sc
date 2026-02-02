@@ -6,7 +6,7 @@ from bp2sc.ast_nodes import (
     BPFile, GrammarBlock, Rule, Weight, Flag,
     Note, Rest, NonTerminal, Variable, Wildcard,
     Polymetric, SpecialFn, Lambda, HomoApply, HomoApplyKind, TimeSig,
-    Comment, FileRef, InitDirective, Annotation,
+    Comment, FileRef, InitDirective, Annotation, Tie,
 )
 
 
@@ -265,3 +265,63 @@ class TestParseBareRule:
         bare_rule = ast.grammars[0].rules[1]
         assert bare_rule.lhs[0].name == "B"
         assert len(bare_rule.rhs) == 2
+
+
+class TestParseTiedNotes:
+    """MusicXML Import: Tied notes C4& (start) and &C4 (end)."""
+
+    def test_tie_start_anglo(self):
+        """C4& should parse as Tie(Note('C', 4), is_start=True)."""
+        ast = parse_text("ORD\ngram#1[1] S --> C4& D4 &C4\n")
+        rhs = ast.grammars[0].rules[0].rhs
+        tie_start = rhs[0]
+        assert isinstance(tie_start, Tie)
+        assert tie_start.is_start is True
+        assert tie_start.note.name == "C"
+        assert tie_start.note.octave == 4
+
+    def test_tie_end_anglo(self):
+        """&C4 should parse as Tie(Note('C', 4), is_start=False)."""
+        ast = parse_text("ORD\ngram#1[1] S --> C4& D4 &C4\n")
+        rhs = ast.grammars[0].rules[0].rhs
+        tie_end = rhs[2]
+        assert isinstance(tie_end, Tie)
+        assert tie_end.is_start is False
+        assert tie_end.note.name == "C"
+        assert tie_end.note.octave == 4
+
+    def test_tie_start_french(self):
+        """fa4& should parse as Tie(Note('fa', 4), is_start=True)."""
+        ast = parse_text("ORD\ngram#1[1] S --> fa4& sol4 &fa4\n")
+        rhs = ast.grammars[0].rules[0].rhs
+        tie_start = rhs[0]
+        assert isinstance(tie_start, Tie)
+        assert tie_start.is_start is True
+        assert tie_start.note.name == "fa"
+        assert tie_start.note.octave == 4
+
+    def test_tie_end_french(self):
+        """&fa4 should parse as Tie(Note('fa', 4), is_start=False)."""
+        ast = parse_text("ORD\ngram#1[1] S --> fa4& sol4 &fa4\n")
+        rhs = ast.grammars[0].rules[0].rhs
+        tie_end = rhs[2]
+        assert isinstance(tie_end, Tie)
+        assert tie_end.is_start is False
+        assert tie_end.note.name == "fa"
+        assert tie_end.note.octave == 4
+
+    def test_tie_with_accidental(self):
+        """C#4& should parse correctly with accidental."""
+        ast = parse_text("ORD\ngram#1[1] S --> C#4& D4 &C#4\n")
+        rhs = ast.grammars[0].rules[0].rhs
+        tie_start = rhs[0]
+        assert isinstance(tie_start, Tie)
+        assert tie_start.note.name == "C#"
+        assert tie_start.note.octave == 4
+
+    def test_normal_notes_unchanged(self):
+        """Notes without & should still parse as normal Note."""
+        ast = parse_text("ORD\ngram#1[1] S --> fa4 sol4\n")
+        rhs = ast.grammars[0].rules[0].rhs
+        assert isinstance(rhs[0], Note)
+        assert isinstance(rhs[1], Note)

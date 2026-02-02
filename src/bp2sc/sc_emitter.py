@@ -120,6 +120,17 @@ class SCEmitter:
         self._last_vel: int = 100  # Default MIDI velocity
         self._rndvel_range: int = 0  # Random velocity range (±N)
 
+        # Timing state for _rndtime support
+        self._rndtime_range: float = 0.0  # Percentage of timing variation (0-100)
+
+        # Tie tracking for tied notes (MusicXML import)
+        self._pending_tie_midi: int | None = None  # MIDI of note starting a tie
+
+        # Pedal state tracking (MusicXML import)
+        self._sustain_pedal: bool = False
+        self._sostenuto_pedal: bool = False
+        self._soft_pedal: bool = False
+
         # Current homomorphism context (set by REF, applied by MASTER/SLAVE)
         self._current_homo_label: str | None = None
 
@@ -856,13 +867,32 @@ class SCEmitter:
 
         INV-2: MIDI integers are always wrapped in Pbind, never bare.
         """
-        # Check if all non-Rest elements are MIDI note numbers
-        non_rest = [e for e in elems if not e.startswith("Rest")]
+        # Pre-process tied note markers
+        processed_elems = []
+        for e in elems:
+            if e.startswith("TIE_START:"):
+                # Tied note start: emit with extended legato (2.0 = sustain through next beat)
+                midi = e.split(":")[1]
+                processed_elems.append(
+                    f"Pbind(\\instrument, \\bp2sc_default, "
+                    f"\\midinote, Pseq([{midi}], 1), \\dur, 0.25, \\legato, 2.0)"
+                )
+            elif e == "TIE_END":
+                # Tied note end: silent event (note already being held)
+                processed_elems.append("Event.silent(0.25)")
+            else:
+                processed_elems.append(e)
+        elems = processed_elems
+
+        # Check if all non-Rest, non-Event.silent elements are MIDI note numbers
+        non_rest = [e for e in elems
+                    if not e.startswith("Rest") and not e.startswith("Event.silent")
+                    and not e.startswith("Pbind")]
         all_midi = bool(non_rest) and all(
             self._is_midi_number(e) for e in non_rest
         )
 
-        if all_midi:
+        if all_midi and non_rest:
             # Pure MIDI notes -> Pbind with \midinote for playability (INV-2)
             seq = sc_pseq(elems)
             pairs: list[tuple[str, str]] = [("midinote", seq)]
@@ -873,7 +903,9 @@ class SCEmitter:
             return sc_pbind(pairs)
 
         # Check if we have a mix of MIDI integers and non-MIDI elements
-        has_midi = any(self._is_midi_number(e) for e in elems if not e.startswith("Rest"))
+        has_midi = any(self._is_midi_number(e) for e in elems
+                       if not e.startswith("Rest") and not e.startswith("Event.silent")
+                       and not e.startswith("Pbind"))
         if has_midi:
             # Wrap bare MIDI integers in Pbind to satisfy INV-2
             # Use Pseq([n], 1) so Pbind produces exactly 1 event (not infinite)
@@ -974,13 +1006,21 @@ class SCEmitter:
             return None
 
         if isinstance(elem, Tie):
-            note_str = f"{elem.note.name}{elem.note.octave or ''}"
-            kind = "start" if elem.is_start else "end"
-            self._warn("unsupported_node",
-                       f"Tie ({kind}) on {note_str} not implemented")
-            # Emit the note itself, ignoring the tie
             midi = note_to_midi(elem.note.name, elem.note.octave)
-            return str(midi)
+            if elem.is_start:
+                # Note starting a tie (C4&): emit with extended legato
+                # Track this note for potential tie end matching
+                self._pending_tie_midi = midi
+                # Return as special tied note marker that will be handled in _wrap_element_group
+                return f"TIE_START:{midi}"
+            else:
+                # Note ending a tie (&C4): check if it matches pending tie
+                if self._pending_tie_midi == midi:
+                    self._pending_tie_midi = None
+                    # This note is already being held, emit as silent
+                    return "TIE_END"
+                # No matching tie start, just emit the note normally
+                return str(midi)
 
         if isinstance(elem, QuotedSymbol):
             self._warn("unsupported_node",
@@ -1180,6 +1220,19 @@ class SCEmitter:
         if name == "mm" and fn.args:
             return sc_comment(f"tempo: {fn.args[0]} BPM")
 
+        if name == "mm_inline" and fn.args:
+            # Inline tempo marker ||N|| from MusicXML import
+            # In RHS context, emit as stretch modifier relative to base tempo
+            try:
+                bpm = float(fn.args[0])
+                # Base tempo is 60 BPM, so stretch = 60/bpm
+                # e.g., ||120|| = stretch 0.5 (2x faster)
+                base_tempo = 60.0
+                stretch = round(base_tempo / bpm, 4)
+                return ("stretch", str(stretch))
+            except (ValueError, ZeroDivisionError):
+                return sc_comment(f"tempo inline: {fn.args[0]} BPM")
+
         if name == "ins" and fn.args:
             # Sanitize instrument name for SC symbol
             arg = fn.args[0]
@@ -1290,6 +1343,22 @@ class SCEmitter:
             # Range is 0: reset to fixed velocity
             return ("amp", str(round(self._last_vel / 127, 3)))
 
+        if name == "rndtime":
+            # Random timing variation: _rndtime(N) adds ±N% variation to duration
+            try:
+                self._rndtime_range = float(fn.args[0]) if fn.args else 0.0
+            except ValueError:
+                self._rndtime_range = 0.0
+
+            if self._rndtime_range > 0:
+                # Variation of ±N% around base duration (0.25)
+                base_dur = 0.25
+                lo = base_dur * (1 - self._rndtime_range / 100)
+                hi = base_dur * (1 + self._rndtime_range / 100)
+                return ("dur", f"Pwhite({round(lo, 4)}, {round(hi, 4)})")
+            # Range is 0: reset to fixed duration
+            return ("dur", "0.25")
+
         if name == "rest":
             return sc_rest()
 
@@ -1314,10 +1383,11 @@ class SCEmitter:
                        f"_keyxpand({fn.args[0]}) emitted as comment")
             return sc_comment(f"keyxpand: {fn.args[0]}")
 
-        if name == "part" and fn.args:
-            self._warn("approximation",
-                       f"_part({fn.args[0]}) emitted as comment")
-            return sc_comment(f"part: {fn.args[0]}")
+        if name == "part":
+            # Informational marker from MusicXML import - no warning needed
+            if fn.args:
+                return sc_comment(f"part: {fn.args[0]}")
+            return None
 
         if name == "pitchstep":
             self._warn("approximation",
@@ -1375,6 +1445,49 @@ class SCEmitter:
             self._warn("approximation",
                        f"_{name}({', '.join(fn.args)}) MIDI switch emitted as comment")
             return sc_comment(f"MIDI _{name}({', '.join(fn.args)})")
+
+        # --- MusicXML Import: Pedal markers ---
+
+        # Sustain pedal
+        if name in ("sustainstart", "sustainstart_"):
+            self._sustain_pedal = True
+            return ("sustain", "1")
+
+        if name in ("sustainstop", "sustainstop_"):
+            self._sustain_pedal = False
+            return ("sustain", "0")
+
+        if name in ("sustainstopstart", "sustainstopstart_"):
+            # Stop then start = remains at 1
+            return ("sustain", "1")
+
+        # Sostenuto pedal
+        if name in ("sostenutostart", "sostenutostart_"):
+            self._sostenuto_pedal = True
+            return ("sostenuto", "1")
+
+        if name in ("sostenutostop", "sostenutostop_"):
+            self._sostenuto_pedal = False
+            return ("sostenuto", "0")
+
+        # Soft pedal (una corda)
+        if name in ("softstart", "softstart_"):
+            self._soft_pedal = True
+            return ("softPedal", "1")
+
+        if name in ("softstop", "softstop_"):
+            self._soft_pedal = False
+            return ("softPedal", "0")
+
+        # --- MusicXML Import: Slur markers ---
+
+        if name in ("legato_",):
+            # Slur start: extended legato
+            return ("legato", "1.5")
+
+        if name in ("nolegato_",):
+            # Slur end: shorter legato (slight staccato)
+            return ("legato", "0.8")
 
         self._warn("unsupported_fn",
                    f"_{fn.name}({', '.join(fn.args)}) unknown, "

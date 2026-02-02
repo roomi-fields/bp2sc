@@ -22,7 +22,7 @@ from bp2sc.ast_nodes import (
     BPFile, GrammarBlock, Rule, Weight, Flag,
     Note, Rest, NonTerminal, Variable, Wildcard,
     Polymetric, SpecialFn, Lambda, HomoApply, HomoApplyKind,
-    TimeSig, Annotation,
+    TimeSig, Annotation, Tie,
     Comment, FileRef, InitDirective,
     Header, RHSElement,
 )
@@ -67,6 +67,14 @@ RE_LAMBDA = re.compile(r"\blambda\b")
 RE_NOTE_FR = re.compile(r"\b(do|re|mi|fa|sol|la|si)(b|#)?(\d)\b")
 RE_NOTE_INDIAN = re.compile(r"\b(sa|re|ga|ma|pa|dha|ni)(\d)\b")
 RE_NOTE_ANGLO = re.compile(r"\b([A-G])(#|b)?(\d)\b")
+
+# Tied notes: &C4 (tie end), C4& (tie start), or &C4& (both)
+# These patterns match Anglo notes with optional & prefix/suffix
+RE_TIED_NOTE_ANGLO = re.compile(r"(&)?([A-G])(#|b)?(\d)(&)?")
+RE_TIED_NOTE_FR = re.compile(r"(&)?(do|re|mi|fa|sol|la|si)(b|#)?(\d)(&)?")
+
+# Tempo inline: ||N|| where N is BPM (integer or decimal)
+RE_TEMPO_INLINE = re.compile(r"\|\|(\d+(?:\.\d+)?)\|\|")
 
 # Nonterminal: uppercase start, then letters/digits/'/"
 RE_NONTERMINAL = re.compile(r"\b([A-Z][A-Za-z0-9_'\"]*)\b")
@@ -427,6 +435,12 @@ def _try_parse_element(text: str, pos: int, is_lhs: bool) -> tuple[int, RHSEleme
     if m:
         return m.end(), Lambda()
 
+    # Tempo inline: ||N|| (MusicXML import BPM marker)
+    m = RE_TEMPO_INLINE.match(remaining)
+    if m:
+        bpm = m.group(1)
+        return m.end(), SpecialFn(name="mm_inline", args=[bpm])
+
     # Special function
     m = RE_SPECIAL_FN.match(remaining)
     if m:
@@ -491,6 +505,25 @@ def _try_parse_element(text: str, pos: int, is_lhs: bool) -> tuple[int, RHSEleme
     if m and (pos + m.end() >= len(text) or not text[pos + m.end()].isalnum()):
         return m.end(), HomoApply(kind=HomoApplyKind.REF, elements=[NonTerminal(m.group(1))])
 
+    # Tied notes: &note (tie end), note& (tie start)
+    # Check for French tied notes first (e.g., &do4, fa4&)
+    m = RE_TIED_NOTE_FR.match(remaining)
+    if m:
+        tie_start_prefix = m.group(1)  # & before note
+        note_name = m.group(2)
+        if m.group(3):
+            note_name += m.group(3)  # accidental
+        octave = int(m.group(4))
+        tie_end_suffix = m.group(5)  # & after note
+
+        if tie_start_prefix or tie_end_suffix:
+            note = Note(name=note_name, octave=octave)
+            # tie_start_prefix means this note ENDS a tie (&C4)
+            # tie_end_suffix means this note STARTS a tie (C4&)
+            is_start = bool(tie_end_suffix)
+            return m.end(), Tie(note=note, is_start=is_start)
+        # No tie markers, fall through to regular note parsing
+
     # Notes: French solfege (always unambiguous: do4, re5, sib4, etc.)
     m = RE_NOTE_FR.match(remaining)
     if m:
@@ -513,6 +546,22 @@ def _try_parse_element(text: str, pos: int, is_lhs: bool) -> tuple[int, RHSEleme
     # Rest: underscore (standalone)
     if remaining[0] == "_" and (pos + 1 >= len(text) or not remaining[1:2].isalpha()):
         return 1, Rest(determined=False)
+
+    # Anglo tied notes: &C4, C4&, &C#4, C#4& etc.
+    # Must be checked BEFORE NonTerminals because C4& would otherwise match as NonTerminal "C4"
+    m = RE_TIED_NOTE_ANGLO.match(remaining)
+    if m:
+        tie_start_prefix = m.group(1)  # & before note
+        note_base = m.group(2)
+        accidental = m.group(3) or ""
+        octave = int(m.group(4))
+        tie_end_suffix = m.group(5)  # & after note
+
+        if tie_start_prefix or tie_end_suffix:
+            note = Note(name=note_base + accidental, octave=octave)
+            is_start = bool(tie_end_suffix)
+            return m.end(), Tie(note=note, is_start=is_start)
+        # No tie markers, fall through to NonTerminal parsing
 
     # Nonterminal (uppercase start): A8, B"8, Tihai, P4, etc.
     # Must come BEFORE Anglo notes since most BP3 grammars use solfege

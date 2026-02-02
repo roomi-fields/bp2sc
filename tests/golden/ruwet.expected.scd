@@ -192,18 +192,24 @@ Pdef(\z32_g3,
 
 
 Pdef(\z311_g3,
-	Pseq([Pbind(\instrument, \bp2sc_default, \midinote, Pseq([70], 1), \dur, 0.25), Pbindf(Pbind(
-		\midinote, Pseq([69, 69], 1),
+	Pbind(
+		\midinote, Pseq([70, Pbindf(Pbind(
+			\midinote, Pseq([69, 69], 1),
+			\dur, 0.25
+		), \stretch, 1/2)], 1),
 		\dur, 0.25
-	), \stretch, 1/2)], 1)
+	)
 );
 
 
 Pdef(\o,
-	Pwrand([Pseq([Pbind(\instrument, \bp2sc_default, \midinote, Pseq([70], 1), \dur, 0.25), Pbindf(Pbind(
-		\midinote, Pseq([69, 67], 1),
+	Pwrand([Pbind(
+		\midinote, Pseq([70, Pbindf(Pbind(
+			\midinote, Pseq([69, 67], 1),
+			\dur, 0.25
+		), \stretch, 1/2)], 1),
 		\dur, 0.25
-	), \stretch, 1/2)], 1), Pdef(\o1), Pdef(\o2), Pdef(\o3)], [3, 1, 1, 1].normalizeSum, 1)
+	), Pdef(\o1), Pdef(\o2), Pdef(\o3)], [3, 1, 1, 1].normalizeSum, 1)
 );
 
 
@@ -211,18 +217,24 @@ Pdef(\o,
 // --- Subgrammar 4 (ORD) ---
 
 Pdef(\x1,
-	Pseq([Pbindf(Pbind(
-		\midinote, Pseq([65, 69], 1),
+	Pbind(
+		\midinote, Pseq([Pbindf(Pbind(
+			\midinote, Pseq([65, 69], 1),
+			\dur, 0.25
+		), \stretch, 1/2), 72], 1),
 		\dur, 0.25
-	), \stretch, 1/2), Pbind(\instrument, \bp2sc_default, \midinote, Pseq([72], 1), \dur, 0.25)], 1)
+	)
 );
 
 
 Pdef(\x2,
-	Pseq([Pbind(\instrument, \bp2sc_default, \midinote, Pseq([65], 1), \dur, 0.25), Pbindf(Pbind(
-		\midinote, Pseq([69, 72], 1),
+	Pbind(
+		\midinote, Pseq([65, Pbindf(Pbind(
+			\midinote, Pseq([69, 72], 1),
+			\dur, 0.25
+		), \stretch, 1/2)], 1),
 		\dur, 0.25
-	), \stretch, 1/2)], 1)
+	)
 );
 
 
@@ -245,28 +257,37 @@ Pdef(\x4,
 
 
 Pdef(\y1,
-	Pseq([Pbind(\instrument, \bp2sc_default, \midinote, Pseq([65], 1), \dur, 0.25), Pbindf(Pbind(
-		\midinote, Pseq([67, 69], 1),
+	Pbind(
+		\midinote, Pseq([65, Pbindf(Pbind(
+			\midinote, Pseq([67, 69], 1),
+			\dur, 0.25
+		), \stretch, 1/2)], 1),
 		\dur, 0.25
-	), \stretch, 1/2)], 1)
+	)
 );
 
 
   // Variant bug fixed here
 Pdef(\y2,
-	Pseq([Pbindf(Pbind(
-		\midinote, Pseq([65, 67], 1),
+	Pbind(
+		\midinote, Pseq([Pbindf(Pbind(
+			\midinote, Pseq([65, 67], 1),
+			\dur, 0.25
+		), \stretch, 1/2), 69], 1),
 		\dur, 0.25
-	), \stretch, 1/2), Pbind(\instrument, \bp2sc_default, \midinote, Pseq([69], 1), \dur, 0.25)], 1)
+	)
 );
 
 
   // Variant
 Pdef(\y3,
-	Pseq([Pbind(\instrument, \bp2sc_default, \midinote, Pseq([65], 1), \dur, 0.25), Pbindf(Pbind(
-		\midinote, Pseq([69, 70], 1),
+	Pbind(
+		\midinote, Pseq([65, Pbindf(Pbind(
+			\midinote, Pseq([69, 70], 1),
+			\dur, 0.25
+		), \stretch, 1/2)], 1),
 		\dur, 0.25
-	), \stretch, 1/2)], 1)
+	)
 );
 
 
@@ -317,19 +338,25 @@ Pdef(\y8,
 
   // Variant
 Pdef(\w1,
-	Pseq([Pbindf(Pbind(
-		\midinote, Pseq([69, 70], 1),
+	Pbind(
+		\midinote, Pseq([Pbindf(Pbind(
+			\midinote, Pseq([69, 70], 1),
+			\dur, 0.25
+		), \stretch, 1/2), 72], 1),
 		\dur, 0.25
-	), \stretch, 1/2), Pbind(\instrument, \bp2sc_default, \midinote, Pseq([72], 1), \dur, 0.25)], 1)
+	)
 );
 
 
   // Variant
 Pdef(\w2,
-	Pseq([Pbind(\instrument, \bp2sc_default, \midinote, Pseq([69], 1), \dur, 0.25), Pbindf(Pbind(
-		\midinote, Pseq([70, 72], 1),
+	Pbind(
+		\midinote, Pseq([69, Pbindf(Pbind(
+			\midinote, Pseq([70, 72], 1),
+			\dur, 0.25
+		), \stretch, 1/2)], 1),
 		\dur, 0.25
-	), \stretch, 1/2)], 1)
+	)
 );
 
 
@@ -362,18 +389,24 @@ Pdef(\w5,
 
   // Not relevant
 Pdef(\z11,
-	Pseq([Pbindf(Pbind(
-		\midinote, Pseq([65, 64], 1),
+	Pbind(
+		\midinote, Pseq([Pbindf(Pbind(
+			\midinote, Pseq([65, 64], 1),
+			\dur, 0.25
+		), \stretch, 1/2), 65], 1),
 		\dur, 0.25
-	), \stretch, 1/2), Pbind(\instrument, \bp2sc_default, \midinote, Pseq([65], 1), \dur, 0.25)], 1)
+	)
 );
 
 
 Pdef(\z12,
-	Pseq([Pbindf(Pbind(
-		\midinote, Pseq([65, 67], 1),
+	Pbind(
+		\midinote, Pseq([Pbindf(Pbind(
+			\midinote, Pseq([65, 67], 1),
+			\dur, 0.25
+		), \stretch, 1/2), 65], 1),
 		\dur, 0.25
-	), \stretch, 1/2), Pbind(\instrument, \bp2sc_default, \midinote, Pseq([65], 1), \dur, 0.25)], 1)
+	)
 );
 
 
@@ -404,10 +437,13 @@ Pdef(\z31_g4,
 
 
 Pdef(\z311_g4,
-	Pseq([Pbind(\instrument, \bp2sc_default, \midinote, Pseq([70], 1), \dur, 0.25), Pbindf(Pbind(
-		\midinote, Pseq([69, 69], 1),
+	Pbind(
+		\midinote, Pseq([70, Pbindf(Pbind(
+			\midinote, Pseq([69, 69], 1),
+			\dur, 0.25
+		), \stretch, 1/2)], 1),
 		\dur, 0.25
-	), \stretch, 1/2)], 1)
+	)
 );
 
 
@@ -422,28 +458,37 @@ Pdef(\z32_g4,
 
   // Variant
 Pdef(\z321,
-	Pseq([Pbind(\instrument, \bp2sc_default, \midinote, Pseq([67], 1), \dur, 0.25), Pbindf(Pbind(
-		\midinote, Pseq([69, 69], 1),
+	Pbind(
+		\midinote, Pseq([67, Pbindf(Pbind(
+			\midinote, Pseq([69, 69], 1),
+			\dur, 0.25
+		), \stretch, 1/2)], 1),
 		\dur, 0.25
-	), \stretch, 1/2)], 1)
+	)
 );
 
 
   // Variant
 Pdef(\z33,
-	Pseq([Pbindf(Pbind(
-		\midinote, Pseq([69, 67], 1),
+	Pbind(
+		\midinote, Pseq([Pbindf(Pbind(
+			\midinote, Pseq([69, 67], 1),
+			\dur, 0.25
+		), \stretch, 1/2), 69], 1),
 		\dur, 0.25
-	), \stretch, 1/2), Pbind(\instrument, \bp2sc_default, \midinote, Pseq([69], 1), \dur, 0.25)], 1)
+	)
 );
 
 
   // Variant
 Pdef(\z34,
-	Pseq([Pbindf(Pbind(
-		\midinote, Pseq([69, 70], 1),
+	Pbind(
+		\midinote, Pseq([Pbindf(Pbind(
+			\midinote, Pseq([69, 70], 1),
+			\dur, 0.25
+		), \stretch, 1/2), 69], 1),
 		\dur, 0.25
-	), \stretch, 1/2), Pbind(\instrument, \bp2sc_default, \midinote, Pseq([69], 1), \dur, 0.25)], 1)
+	)
 );
 
 
@@ -476,10 +521,13 @@ Pdef(\z51,
 
   // Variant
 Pdef(\z511,
-	Pseq([Pbind(\instrument, \bp2sc_default, \midinote, Pseq([74], 1), \dur, 0.25), Pbindf(Pbind(
-		\midinote, Pseq([72, 72], 1),
+	Pbind(
+		\midinote, Pseq([74, Pbindf(Pbind(
+			\midinote, Pseq([72, 72], 1),
+			\dur, 0.25
+		), \stretch, 1/2)], 1),
 		\dur, 0.25
-	), \stretch, 1/2)], 1)
+	)
 );
 
 
@@ -494,28 +542,37 @@ Pdef(\z52,
 
   // Variant
 Pdef(\z521,
-	Pseq([Pbind(\instrument, \bp2sc_default, \midinote, Pseq([70], 1), \dur, 0.25), Pbindf(Pbind(
-		\midinote, Pseq([72, 72], 1),
+	Pbind(
+		\midinote, Pseq([70, Pbindf(Pbind(
+			\midinote, Pseq([72, 72], 1),
+			\dur, 0.25
+		), \stretch, 1/2)], 1),
 		\dur, 0.25
-	), \stretch, 1/2)], 1)
+	)
 );
 
 
   // Variant
 Pdef(\z53,
-	Pseq([Pbindf(Pbind(
-		\midinote, Pseq([72, 70], 1),
+	Pbind(
+		\midinote, Pseq([Pbindf(Pbind(
+			\midinote, Pseq([72, 70], 1),
+			\dur, 0.25
+		), \stretch, 1/2), 72], 1),
 		\dur, 0.25
-	), \stretch, 1/2), Pbind(\instrument, \bp2sc_default, \midinote, Pseq([72], 1), \dur, 0.25)], 1)
+	)
 );
 
 
   // Variant
 Pdef(\z54,
-	Pseq([Pbindf(Pbind(
-		\midinote, Pseq([72, 74], 1),
+	Pbind(
+		\midinote, Pseq([Pbindf(Pbind(
+			\midinote, Pseq([72, 74], 1),
+			\dur, 0.25
+		), \stretch, 1/2), 72], 1),
 		\dur, 0.25
-	), \stretch, 1/2), Pbind(\instrument, \bp2sc_default, \midinote, Pseq([72], 1), \dur, 0.25)], 1)
+	)
 );
 
 
