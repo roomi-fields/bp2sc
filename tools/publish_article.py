@@ -33,22 +33,22 @@ from pathlib import Path
 # ─── Configuration ───────────────────────────────────────────────────────────
 
 ARTICLES_DIR = Path(
-    "D:/Romain/Articles/Publications/roomi-fields.com/Articles/"
+    "D:/Obsidian/Articles/Publications/roomi-fields.com/Articles/"
 )
 ARTICLES_EN_DIR = ARTICLES_DIR / "_en"
 BLOG_DIR = Path(
-    "D:/Romain/Articles/Projets/Ontologie musicale/40_OUTPUT/Blog/"
+    "D:/Obsidian/Articles/Projets/Ontologie musicale/40_OUTPUT/Blog/"
 )
 INDEX_PATH = BLOG_DIR / "INDEX.md"
 MOC_PATH = Path(
-    "D:/Romain/Articles/Projets/Ontologie musicale/40_OUTPUT/"
+    "D:/Obsidian/Articles/Projets/Ontologie musicale/40_OUTPUT/"
     "MOC_Articles_Blog.md"
 )
 
 GLOSSARY_FR_PATH = ARTICLES_DIR / "Glossaire.md"
 GLOSSARY_EN_PATH = ARTICLES_EN_DIR / "Glossaire.md"
 TIKZ_ASSETS_DIR = Path(
-    "D:/Romain/Articles/_Assets/Illustrations/tikz"
+    "D:/Obsidian/Articles/_Assets/Illustrations/tikz"
 )
 
 def build_link_renames() -> dict:
